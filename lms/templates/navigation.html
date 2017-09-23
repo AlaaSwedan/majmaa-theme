@@ -1,0 +1,230 @@
+## mako
+
+<%page expression_filter="h" args="online_help_token"/>
+
+<%namespace name='static' file='static_content.html'/>
+<%namespace file='main.html' import="login_query"/>
+<%!
+from django.core.urlresolvers import reverse
+from django.utils.translation import ugettext as _
+
+from lms.djangoapps.ccx.overrides import get_current_ccx
+from openedx.core.djangolib.markup import HTML, Text
+
+# App that handles subdomain specific branding
+from branding import api as branding_api
+# app that handles site status messages
+from status.status import get_site_status_msg
+from openedx.core.djangoapps.lang_pref.api import header_language_selector_is_enabled, released_languages
+%>
+
+## Provide a hook for themes to inject branding on top.
+<%block name="navigation_top" />
+
+## Add UI Toolkit components if using the Pattern Library
+% if uses_pattern_library:
+    <%block name="js_extra">
+    <%static:require_module module_name="js/header_factory" class_name="HeaderFactory">
+    HeaderFactory();
+    </%static:require_module>
+    </%block>
+% endif
+
+<%block>
+<%
+try:
+    course_id = course.id
+except:
+    # can't figure out a better way to get at a possibly-defined course var
+    course_id = None
+site_status_msg = get_site_status_msg(course_id)
+%>
+% if site_status_msg:
+<div class="site-status">
+  <div class="inner-wrapper">
+    <span class="icon fa fa-warning"></span>
+    <p>${site_status_msg}</p>
+  </div>
+</div>
+% endif
+</%block>
+
+
+    <!-- start Header -->
+    <header id="global-navigation">
+    
+      <!-- start Navbar (Header) -->
+      <nav class="navbar navbar-primary navbar-fixed-top navbar-sticky-function">
+      
+        <div id="top-header">
+      
+          <div class="container new-header-pad">
+          
+            <div class="row">
+            
+            
+              
+              <div class="col-sm-6 col-sm-offset-6">
+               % if header_language_selector_is_enabled():
+        <% languages = released_languages() %>
+        % if len(languages) > 1: 
+                        <div class="top-header-widget font-droid">
+                       <ul class="user Nav_lang_ol Dis_nav font-droid">
+                    <li class="primary font-droid">
+                      <form action="/i18n/setlang/" method="post" class="settings-language-form" id="language-settings-form">
+                <input type="hidden" id="csrf_token" name="csrfmiddlewaretoken" value="${csrf_token}">
+                % if user.is_authenticated():
+                        <input title="session update url" type="hidden" class="url-endpoint font-droid" value="${reverse('preferences_api', kwargs={'username': user.username})}" data-user-is-authenticated="false">
+                          % else:
+                  <input title="session update url" type="hidden" class="url-endpoint font-droid" value="${reverse('session_language')}" data-user-is-authenticated="false">
+                % endif
+                     
+                            <select class="input select language-selector L_Selection top-header-dro dropdown-menu-new font-droid font-english" id="settings-language-value" name="language">
+    % for language in languages:
+                      % if language[0] == LANGUAGE_CODE:
+                        <option value="${language[0]}" selected="selected" class="font-droid">${language[1]}</option>
+                      % else:
+                        <option value="${language[0]}" class="font-droid">${language[1]}</option>
+                      % endif
+                    % endfor
+                            </select>
+                        </label>
+                      </form>
+                    </li>
+                  </ul>
+                </div>
+                            % endif
+      % endif
+                
+          % if user.is_authenticated():
+                    <%block name="navigation_global_links_authenticated">
+                    %if settings.FEATURES.get('ENABLE_SYSADMIN_DASHBOARD','') and user.is_staff:
+                    <li class="font-droid">
+                      ## Translators: This is short for "System administration".
+                      <a href="${reverse('sysadmin')}">${_("Sysadmin")}</a>
+                    </li>
+                      %endif
+                      </%block>
+                      %else:
+                      <%block name="navigation_other_global_links">
+                      % if not settings.FEATURES['DISABLE_LOGIN_BUTTON']:
+                      % if course and settings.FEATURES.get('RESTRICT_ENROLL_BY_REG_METHOD') and course.enrollment_domain:
+                   
+                        <div class="top-header-widget ">
+                  <a href="${reverse('course-specific-register', args=[course.id.to_deprecated_string()])}" class="btn-ajax-register font-droid" data-toggle="modal">
+                    <i class="ion-person-add mr-3"></i> ${_("Register")}
+                  </a>
+                </div>
+
+                        % else:
+                     
+                          <div class="top-header-widget ">
+                  <a href="/register${login_query()}" class="btn-ajax-register font-droid" data-toggle="modal">
+                    <i class="ion-person-add mr-3"></i> ${_("Register")}
+                  </a>
+                </div>
+                          % endif
+                          % endif
+                          </%block>
+                          <%block name="navigation_sign_in">
+                 
+                          % if not settings.FEATURES['DISABLE_LOGIN_BUTTON']:
+                          % if course and settings.FEATURES.get('RESTRICT_ENROLL_BY_REG_METHOD') and course.enrollment_domain:
+                          
+
+                           <div class="top-header-widget ">
+                  <a href="${reverse('course-specific-login', args=[course.id.to_deprecated_string()])}${login_query()}" class="btn-ajax-login font-droid" data-toggle="modal">
+                    <i class="ion-log-in mr-3 mar-5"></i>${_("Sign in")}
+                  </a>
+                </div>
+                                          % else:
+                         
+                                  <div class="top-header-widget ">
+                  <a href="/login${login_query()}" class="btn-ajax-login font-droid" data-toggle="modal">
+                    <i class="ion-log-in mr-3 mar-5"></i>${_("Sign in")}
+                  </a>
+                </div>
+                          % endif
+                          % endif
+                       
+                        </%block>
+                         %endif
+                <!--<div class="top-header-widget pull-right hidden-xs">
+                  <a href="#">
+                    <i class="fa fa-comments mr-3"></i> Support
+                  </a>
+                </div>-->
+                
+              
+              </div>
+              
+            </div>
+          
+          </div>
+          
+        </div>
+
+
+        <div class="nav-position container-fluid">
+          
+
+        <div class="container padding-0">
+          
+          <div class="navbar-header">
+            <a class="navbar-brand" href="${marketing_link('ROOT')}">
+              <img class="site_logo" src="${static.url('majmaa-theme/images/logo.png')}" />
+              <!--<i class="education-icon-book7"></i> Edu<strong class="uppercase">Tute</strong>-->
+              </a>
+          </div>
+          
+          <div id="navbar bs-example-navbar-collapse-1" class="collapse navbar-collapse navbar-arrow">
+          
+            <ul class="nav navbar-nav " id="responsive-menu">
+            
+              <li class="font-droid">
+                <a href="${marketing_link('ROOT')}" class="font-droid">${_("Home")} </a>
+              
+              </li>
+              <li class="font-droid">
+                <a href="/about" class="font-droid">${_("About us")} </a>
+              
+              </li>
+              
+            
+              <li class="font-droid">
+                <a href="/training" class="font-droid">${_("Sections")}  </a>
+                <!--<ul>
+                  <li><a href="blog-single.html">Blog Single</a></li>
+                </ul>-->
+              </li>
+              <li class="font-droid"> 
+                <a href="${marketing_link('COURSES')}" class="font-droid">${_("Explore courses")}   </a>
+                <!--<ul>
+                  <li><a href="blog-single.html">Blog Single</a></li>
+                </ul>-->
+              </li>
+      
+              <li class="font-droid"><a href="/contact" class="font-droid">${_("Contact us")} </a></li>
+            </ul>
+
+            <div class="left-logo new-float">
+                <img  src="${static.url('majmaa-theme/images/20-30.png')}" />
+             </div>
+          
+          </div>
+      
+          
+        </div>
+        </div>
+
+
+
+
+
+        <div id="slicknav-mobile"></div>
+        
+      </nav>
+      <!-- end Navbar (Header) -->
+
+    </header>
+    <!-- end Header -->
